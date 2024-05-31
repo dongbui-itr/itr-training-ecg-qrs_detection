@@ -1,0 +1,7 @@
+tqdm
+tensorflow
+tensorflow-gpu
+numpy
+wfdb
+scipy
+matplotlib
