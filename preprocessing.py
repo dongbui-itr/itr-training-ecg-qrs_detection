@@ -8,9 +8,11 @@ import os
 import matplotlib.pyplot as plt
 np.seterr(divide='ignore')
 
-
+# Baseline wander is a type of low-frequency noise that can affect the analysis of signals
 def baseline_wander_remove(signal, fs=250, f1=0.2, f2=0.6):
+    # 71
     window1 = int(f1 * fs) - 1 if int(f1 * fs) % 2 == 0 else int(f1 * fs)
+    # 215
     window2 = int(f2 * fs) - 1 if int(f2 * fs) % 2 == 0 else int(f2 * fs)
     med_signal_0 = spysig.medfilt(signal, window1)
     med_signal_1 = spysig.medfilt(med_signal_0, window2)
@@ -50,7 +52,9 @@ def preprocess_data(file_path, separate=None):
         signal_length = signal_length - signal_length // 2
     else:
         signal, _ = wfdb.rdsamp(file_path, channels=[0])
+        # signal, _ = wfdb.rdsamp("/home/tien/Documents/ITR/mit-bih-arrhythmia-database-1.0.0/100", channels=[0])
         annotation = wfdb.rdann(file_path, 'atr')
+        # annotation = wfdb.rdann("/home/tien/Documents/ITR/mit-bih-arrhythmia-database-1.0.0/100", 'atr')
 
     signal.astype(DATA_TYPE)
     signal = np.squeeze(signal)
@@ -73,12 +77,14 @@ def preprocess_data(file_path, separate=None):
     signal = normalize(signal, FREQUENCY_SAMPLING, 0.5)
     # Data and labelling
     data_sample = []
-    for i in range(signal_length - (NEIGHBOUR_POINT - 1)):
-        data_sample.append(signal[i:i + NEIGHBOUR_POINT])
+    # for i in range(signal_length - (NEIGHBOUR_POINT - 1)):
+    for i in range(NEIGHBOUR_PRE, signal_length - NEIGHBOUR_POST):
+        data_sample.append(signal[i - NEIGHBOUR_PRE:i + NEIGHBOUR_POST])
     data_sample = np.expand_dims(np.array(data_sample, dtype='float32'), axis=2)
 
     label = np.zeros(signal_length, dtype='int8')
     for i in range(annotation.ann_len):
+        # bo ki hieu ko phai beat
         if annotation.symbol[i] in ['+', '~', '|', '[', '!', ']', '"', 's', 'x']:
             continue
         label[annotation.sample[i] - POSITIVE_RANGE:annotation.sample[i] + POSITIVE_RANGE + 1] = 1
@@ -91,3 +97,6 @@ def preprocess_data(file_path, separate=None):
     # plt.grid()
     # plt.show()
     return data_sample, label
+
+# test preprocess_data
+# preprocess_data("/home/tien/Documents/ITR/mit-bih-arrhythmia-database-1.0.0/100.hea", separate=None)
