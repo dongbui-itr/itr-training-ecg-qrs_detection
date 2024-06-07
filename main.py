@@ -64,18 +64,19 @@ def train_model(model, batch_size=128, epoch=3):
     check_point_dir = CHECK_POINT_DIR + TEST_TIME + '/'
     if not os.path.exists(check_point_dir):
         os.mkdir(check_point_dir)
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=check_point_dir + "{epoch:02d}.ckpt",
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=check_point_dir + "{epoch:02d}.weights.h5",
                                                     save_weights_only=True, verbose=0, save_freq='epoch')
     callback = [
         tensorboard,
         checkpoint
     ]
     with tf.device("/GPU:0"):
-        model.fit(train_data, steps_per_epoch=sample / batch_size, epochs=epoch, verbose=1, use_multiprocessing=True,
-                  validation_data=valid_data,
-                  callbacks=callback,
-                  )
-        model.save(SAVE_MODEL_DIR + TEST_TIME)
+        model.fit(train_data, steps_per_epoch=int(sample / batch_size), epochs=epoch, verbose=1, 
+                    # use_multiprocessing=True,
+                    validation_data=valid_data,
+                    callbacks=callback,
+                    )
+        model.save(SAVE_MODEL_DIR + TEST_TIME + '/model_run-0.h5')
 
 
 def get_result(result_file_name, checkpoint=True, checkpoint_epoch=0, saved_model_name=None, batch_size=128):
@@ -87,7 +88,8 @@ def get_result(result_file_name, checkpoint=True, checkpoint_epoch=0, saved_mode
         prefetch_buffer = batch_size * 100
         if checkpoint:
             model = get_qrs_model()
-            model.load_weights(CHECK_POINT_DIR + TEST_TIME + "/0{}.ckpt".format(checkpoint_epoch))
+            model.load_weights(CHECK_POINT_DIR + TEST_TIME + "/0{}.weights.h5".format(checkpoint_epoch))
+            model.save(SAVE_MODEL_DIR + TEST_TIME + '/model_run-0.h5')
             print('Load model checkpoint')
         else:
             model = tf.keras.models.load_model(SAVE_MODEL_DIR + saved_model_name)
@@ -98,7 +100,9 @@ def get_result(result_file_name, checkpoint=True, checkpoint_epoch=0, saved_mode
                 continue
             test_data = get_tf_records(file, batch_size, shuffle_buffer, prefetch_buffer, mode='test')
             with tf.device("/GPU:0"):
-                prediction = model.predict(test_data, use_multiprocessing=True, verbose=0)
+                prediction = model.predict(test_data,
+                                        #    use_multiprocessing=True,
+                                           verbose=0)
             prediction = np.rint(prediction)
             # np.savetxt(TEMP_DIR + 'predict' + file + '.txt', prediction.astype('int'), fmt='%d')
             result = evaluate(file.split('.')[0], prediction, MITDB_DIR)
@@ -113,7 +117,7 @@ def get_result(result_file_name, checkpoint=True, checkpoint_epoch=0, saved_mode
 def multi_predict(file_path, dataset, checkpoint=True, checkpoint_epoch=3, saved_model_name=None, batch_size=128):
     if checkpoint:
         model = get_qrs_model()
-        model.load_weights(CHECK_POINT_DIR + TEST_TIME + "/0{}.ckpt".format(checkpoint_epoch))
+        model.load_weights(CHECK_POINT_DIR + TEST_TIME + "/0{}.weights.h5".format(checkpoint_epoch))
         print('Load model checkpoint')
     else:
         model = tf.keras.models.load_model(SAVE_MODEL_DIR + saved_model_name)
