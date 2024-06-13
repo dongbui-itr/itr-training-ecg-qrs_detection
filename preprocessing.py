@@ -15,9 +15,8 @@ def baseline_wander_remove(signal, fs=250, f1=0.2, f2=0.6):
     med_signal_0 = spysig.medfilt(signal, window1)
     med_signal_1 = spysig.medfilt(med_signal_0, window2)
     bwr_signal = signal - med_signal_1
-    taps = firwin(12, 35 / fs, window='hamming')
-    bwr_signal = lfilter(taps, 1.0, bwr_signal)
-
+    # taps = firwin(12, 35 / fs, window='hamming')
+    # bwr_signal = lfilter(taps, 1.0, bwr_signal)
     return bwr_signal
 
 

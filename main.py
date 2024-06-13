@@ -64,7 +64,7 @@ def train_model(model, batch_size=128, epoch=3):
     check_point_dir = CHECK_POINT_DIR + TEST_TIME + '/'
     if not os.path.exists(check_point_dir):
         os.mkdir(check_point_dir)
-    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=check_point_dir + "{epoch:02d}.ckpt",
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=check_point_dir + "{epoch:02d}.weights.h5",
                                                     save_weights_only=True, verbose=0, save_freq='epoch')
     callback = [
         tensorboard,
@@ -75,7 +75,7 @@ def train_model(model, batch_size=128, epoch=3):
                   validation_data=valid_data,
                   callbacks=callback,
                   )
-        model.save(SAVE_MODEL_DIR + TEST_TIME)
+        model.save(SAVE_MODEL_DIR + TEST_TIME + '/model.h5')
 
 
 def get_result(result_file_name, checkpoint=True, checkpoint_epoch=0, saved_model_name=None, batch_size=128):
@@ -121,6 +121,7 @@ def multi_predict(file_path, dataset, checkpoint=True, checkpoint_epoch=3, saved
     with tf.device("/GPU:0"):
         prediction = model.predict(test_data, batch_size=batch_size, use_multiprocessing=True, verbose=0)
     prediction = np.rint(prediction)
+    
     np.savetxt(TEMP_DIR + 'pred.txt', prediction, fmt='%d\t')
     evaluate(file_path.split('/')[-1][:-4], prediction, dataset, True)
 
@@ -137,6 +138,7 @@ def get_result_ec57():
     for dataset in database:
         ann_dir = TEMP_DIR + dataset.split('/')[-2] + '/'
         if not os.path.isdir(ann_dir):
+            os.chmod(ann_dir, 0o666)
             os.makedirs(ann_dir)
         arg_list = []
         for file in get_record_raw(dataset):
@@ -152,14 +154,15 @@ def get_result_ec57():
         with Pool(processes=os.cpu_count()) as pool:
             pool.starmap(multi_predict, arg_list)
 
-        result_dir = RESULT_DIR + 'ec57/' + dataset.split('/')[-2] + '/'
+        result_dir = RESULT_DIR + 'ec57/' + dataset.split('/')[-2]
         if not os.path.isdir(result_dir):
+            os.chmod(result_dir, 0o666)
             os.makedirs(result_dir)
         ec57_eval(result_dir, ann_dir, 'atr', 'atr', 'pred', None)
 
 
 if __name__ == '__main__':
-    generate_data(get_record_raw(MITDB_DIR), None)
+    # generate_data(get_record_raw(MITDB_DIR), None)
     # train_model(get_qrs_model(), epoch=10)
     # get_result(TEST_TIME, checkpoint=True, checkpoint_epoch=3, saved_model_name='run-0')
-    # get_result_ec57()
+    get_result_ec57()
